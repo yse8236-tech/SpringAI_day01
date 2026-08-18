@@ -3,7 +3,9 @@ package com.skala.ch03.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.skala.ch03.domain.Order;
 import com.skala.ch03.domain.OrderNotFoundException;
@@ -31,7 +33,7 @@ public class OrderSummaryService {
 
     public SummaryResponse summarize(String orderId, String userId) {
         Order order = orders.findByIdAndOwnerId(orderId, userId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다."));
 
         String summary;
         try {
@@ -45,7 +47,7 @@ public class OrderSummaryService {
                     .call().content();
         } catch (RuntimeException e) {
             log.warn("AI 요약 실패, 주문 정보로 대체한다: orderId={}", orderId, e);
-            summary = order.item() + " · " + order.status().label();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI 서비스 호출 실패", e);
         }
 
         return new SummaryResponse(order.id(), summary);
