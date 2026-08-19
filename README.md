@@ -1,4 +1,4 @@
-# ch03_chatclient — 교재 4장 · ChatClient 와 용도별 빈
+# ch03_chatclient — ChatClient와 Day 1·2 실습
 
 용도별 ChatClient 빈, 템플릿 파라미터 바인딩.
 
@@ -28,6 +28,9 @@ export OPENAI_API_KEY="sk-..."   # 소스·깃에 절대 커밋하지 않는다
 | `ChatClientConfig.java` | 추출용(temperature 0) · 상담용(0.7) 빈을 나눠 만든다 |
 | `HelloAiService.java` | `@Qualifier` 주입 · 호출 시점 system 추가 · `{변수}` 바인딩 |
 | `ChatClientController.java` | `/ch03/**` |
+| `Lab2IngestService.java` | 정책 문서 재색인과 source/version 메타데이터 |
+| `Lab2RetrievalService.java` | 유사도 점수를 포함한 검색 결과 |
+| `Lab2QuestionAnswerService.java` | 검색 근거만 사용하는 구조화 Q&A |
 
 **왜 빈을 나누나** — 하나의 ChatClient 로 모든 일을 시키면 기본값이 서로 충돌한다.
 추출은 흔들리면 안 되고(0), 상담은 자연스러워야 한다(0.7). 빈으로 나누면
@@ -51,6 +54,48 @@ curl 'localhost:8080/ch03/translate?text=오늘 배송이 지연되었습니다&
 
 같은 요청이 **`http/ch03_chatclient.http`** 에 들어 있다 — VS Code 의 REST Client 확장에서
 각 요청 위의 **[Send Request]** 를 누르면 curl 없이 응답을 볼 수 있다.
+
+## Day 2 — 사내 문서 Q&A
+
+벡터 저장소는 메모리 방식이므로 앱을 다시 띄우면 먼저 인제스트해야 한다.
+
+```bash
+# 1. 세 정책 문서 색인
+curl -X POST 'http://localhost:8080/lab2/ingest'
+
+# 2. 생성 전에 검색 결과와 점수 확인
+curl -G 'http://localhost:8080/lab2/retrieve' \
+  --data-urlencode 'q=물건 돌려보내려면 며칠 안에 해야 해요?'
+
+# 3. 근거 기반 구조화 답변
+curl -X POST 'http://localhost:8080/lab2/ask' \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"골드 등급 적립률은?"}'
+```
+
+응답은 `answer`, `sources`, `grounded` 세 필드다. 검색 결과가 없으면 모델을
+부르지 않고 `확인되지 않습니다.`를 반환한다. 모델이 검색되지 않은 출처를 만들면
+응답 검증 단계에서 제거한다. 전체 요청 예제는 `http/lab2.http`에 있다.
+
+### 골든 세트와 실험값
+
+기본 테스트는 외부 모델을 호출하지 않는다. API 키가 설정된 환경에서만 평가를
+명시적으로 실행한다.
+
+```bash
+./gradlew test                 # 컨텍스트와 일반 테스트만
+./gradlew test -Peval          # 10문항 골든 세트, 8개 이상 통과해야 성공
+```
+
+실험은 한 번에 한 값만 바꾼다. 환경 변수를 바꾼 각 실행은 새 테스트 컨텍스트에서
+문서를 다시 인제스트한다.
+
+```bash
+LAB2_CHUNK_SIZE=200 ./gradlew test -Peval   # B: 작은 청크
+LAB2_CHUNK_SIZE=800 ./gradlew test -Peval   # C: 큰 청크
+LAB2_TOP_K=8 ./gradlew test -Peval          # D: 넓은 검색
+LAB2_SIMILARITY_THRESHOLD=0.7 ./gradlew test -Peval  # E: 엄격한 검색
+```
 
 ---
 
