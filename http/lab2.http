@@ -1,0 +1,29 @@
+@host = http://localhost:8080
+
+### 1. 세 정책 문서 인제스트 (앱을 다시 띄웠다면 먼저 실행)
+POST {{host}}/lab2/ingest
+
+### 2-1. 정확한 표현 검색
+GET {{host}}/lab2/retrieve?q=반품기한
+
+### 2-2. 바꿔 쓴 표현 검색
+GET {{host}}/lab2/retrieve?q=물건%20돌려보내려면%20며칠%20안에
+
+### 2-3. 문서에 없는 내용 검색
+GET {{host}}/lab2/retrieve?q=우주배송
+
+### 3-1. 근거 있는 답변
+POST {{host}}/lab2/ask
+Content-Type: application/json
+
+{
+  "question": "골드 등급 적립률은?"
+}
+
+### 3-2. 문서에 없는 질문은 거절
+POST {{host}}/lab2/ask
+Content-Type: application/json
+
+{
+  "question": "우주 배송도 되나요?"
+}
