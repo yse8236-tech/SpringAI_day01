@@ -49,6 +49,21 @@ dependencyManagement {
     imports { mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}" }
 }
 
-tasks.named('test') { useJUnitPlatform() }
+tasks.named('test') {
+    useJUnitPlatform {
+        // 실제 OpenAI 호출이 필요한 평가는 명시적으로 요청할 때만 실행한다.
+        if (!project.hasProperty('eval')) {
+            excludeTags 'eval'
+        }
+    }
+    testLogging {
+        events 'passed', 'failed', 'skipped'
+        showStandardStreams = project.hasProperty('eval')
+    }
+    if (project.hasProperty('eval')) {
+        // 환경 변수만 바꾼 연속 실험도 UP-TO-DATE로 건너뛰지 않는다.
+        outputs.upToDateWhen { false }
+    }
+}
 
 springBoot { mainClass = 'com.skala.ch03.Ch03Application' }
