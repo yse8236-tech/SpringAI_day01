@@ -33,11 +33,12 @@ dependencies {
     // ── 웹 · 문서 ──────────────────────────────────────────────
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'   // /swagger-ui.html
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'    // /swagger-ui.html
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'                  // /actuator/prometheus
 
     // ── Spring AI ─────────────────────────────────────────────
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-advisors-vector-store'     // VectorStore
 
     // ── 테스트 ─────────────────────────────────────────────────
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
