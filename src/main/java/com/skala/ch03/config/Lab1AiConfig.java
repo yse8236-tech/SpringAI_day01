@@ -2,6 +2,10 @@ package com.skala.ch03.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,5 +32,11 @@ class Lab1AiConfig {
                         .maxTokens(120)     // 비용 상한 — 길게 쓸 이유가 없다
                         .build())
                 .build();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(VectorStore.class)
+    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
+        return SimpleVectorStore.builder(embeddingModel).build();
     }
 }

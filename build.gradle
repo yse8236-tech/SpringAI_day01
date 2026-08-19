@@ -38,6 +38,7 @@ dependencies {
 
     // ── Spring AI ─────────────────────────────────────────────
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-vector-store'
     implementation 'org.springframework.ai:spring-ai-advisors-vector-store'     // VectorStore
 
     // ── 테스트 ─────────────────────────────────────────────────
