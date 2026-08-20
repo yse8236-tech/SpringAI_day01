@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.skala.ch03.domain.Ticket;
 import com.skala.ch03.repository.TicketRepository;
-import com.skala.ch03.tool.OrderTools;
 
 
 
@@ -21,19 +20,11 @@ import com.skala.ch03.tool.OrderTools;
 public class Lab3Controller {
 
     private final ChatClient chatClient;
-    private final OrderTools orderTools;
     private final TicketRepository tickets;
 
-    public Lab3Controller(ChatClient.Builder builder, OrderTools orderTools, TicketRepository tickets) {
-        this.orderTools = orderTools;
+    public Lab3Controller(ChatClient assistantChatClient, TicketRepository tickets) {
+        this.chatClient = assistantChatClient;
         this.tickets = tickets;
-
-        this.chatClient = builder.defaultSystem("""
-                                    당신은 쇼핑몰 상담 도우미입니다.
-                                    주문 상태나 배송 상태 질문에는 주문 조회 도구를 사용하세요.
-                                    사용자가 제공하지 않은 정보는 추측하지 마세요.
-                                    """)
-                                 .build();
     }
 
     @PostMapping("/chat")
@@ -44,7 +35,6 @@ public class Lab3Controller {
 
         return chatClient.prompt()
                          .user(request.message())
-                         .tools(orderTools)
                          .toolContext(Map.of("userId", request.userId)) // userId를 Tool parameter로 넘기지 않음
                          .call()
                          .content();
