@@ -10,15 +10,19 @@ import com.skala.ch03.domain.Ticket;
 import com.skala.ch03.repository.OrderRepository;
 import com.skala.ch03.repository.TicketRepository;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 @Component
 public class OrderTools {
 
     private final OrderRepository orders;
     private final TicketRepository tickets;
+    private final MeterRegistry registry;
 
-    public OrderTools(OrderRepository orders, TicketRepository tickets) {
+    public OrderTools(OrderRepository orders, TicketRepository tickets, MeterRegistry registry) {
         this.orders = orders;
         this.tickets = tickets;
+        this.registry = registry;
     }
 
     @Tool(description = """
@@ -27,19 +31,39 @@ public class OrderTools {
             '내 주문', '배송 언제'처럼 주문 상태나 배송 상태를 물으면 이 도구를 사용한다.
             """)
     public OrderView getOrder(@ToolParam(description = "조회할 주문번호. 예: 12345") String orderId, ToolContext context) {
+
         System.out.println("[TOOL] getOrder() 호출");
 
         String userId = (String) context.getContext().get("userId");
 
-        return orders.findByIdAndOwnerId(orderId, userId)
-                     .map(OrderView::from)
-                     .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+        try {
+
+            OrderView result = orders.findByIdAndOwnerId(orderId, userId)
+                                     .map(OrderView::from)
+                                     .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+
+            registry.counter("ai.tool.calls", "tool", "getOrder", "result", "ok").increment();
+
+            return result;
+
+        } catch (RuntimeException e) {
+
+            registry.counter("ai.tool.calls", "tool", "getOrder", "result", "fail").increment();
+
+            throw e;
+
+        }
+
     }
 
     public record OrderView(String id, String item, String status, String eta) {
+
         static OrderView from(Order order) {
+
             return new OrderView(order.id(), order.item(), order.status().name(), order.eta());
+
         }
+
     }
 
     @Tool(description = """
@@ -53,16 +77,36 @@ public class OrderTools {
                                     @ToolParam(description = "환불 사유. 예: 단순 변심") String reason,
                                     ToolContext context) {
 
-        String userId = (String) context.getContext().get("userId");
-        orders.findByIdAndOwnerId(orderId, userId).orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
-        Ticket ticket = tickets.create(orderId, userId, reason);
-
         System.out.println("[TOOL] requestRefund() 호출");
-        System.out.println("[REFUND_REQEUESTED] user = " + userId + ", orderId = " + orderId + ", ticket = " + ticket.no());
+        String userId = (String) context.getContext().get("userId");
 
-        orders.findByIdAndOwnerId(orderId, userId).orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+        try {
 
-        return new TicketView(ticket.no(), "접수되었습니다. 담당자 승인 후 처리됩니다.");
+            // 본인 주문인지 권한 확인
+            orders.findByIdAndOwnerId(orderId, userId).orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+
+            // PENDING 티켓 생성
+            Ticket ticket = tickets.create(orderId, userId, reason);
+
+            // 도구 호출 성공 지표
+            registry.counter("ai.tool.calls", "tool", "requestRefund", "result", "ok").increment();
+
+            // 임시 감사 로그
+            System.out.println("[REFUND_REQUESTED]"
+                                + "user = " + userId + ", orderId = " + orderId + ", reason = " + reason
+                                + ", ticket" + ticket + ", status = " + ticket.status());
+
+            // 접수 결과 반환
+            return new TicketView(ticket.no(), "접수되었습니다. 담당자 승인 후 처리됩니다.");
+
+        } catch (RuntimeException e) {
+
+            // 도구 호출 실패 지표
+            registry.counter("ai.tool.calls", "tool", "requestRefund", "result", "fail").increment();
+
+            throw e;
+
+        }
 
     }
 
