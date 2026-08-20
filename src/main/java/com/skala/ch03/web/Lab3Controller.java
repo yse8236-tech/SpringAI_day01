@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,18 +30,21 @@ public class Lab3Controller {
 
     @PostMapping("/chat")
     public String chat(@RequestBody ChatRequest request) {
-    System.out.println("request = " + request);
-    System.out.println("userId = " + request.userId());
-    System.out.println("message = " + request.message());
+        System.out.println("request = " + request);
+        System.out.println("userId = " + request.userId());
+        System.out.println("message = " + request.message());
+
+        String converationId = request.userId() + " : " + request.sessionId();
 
         return chatClient.prompt()
                          .user(request.message())
+                         .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, converationId))
                          .toolContext(Map.of("userId", request.userId)) // userId를 Tool parameter로 넘기지 않음
                          .call()
                          .content();
     }
 
-    public record ChatRequest(String userId, String message) {
+    public record ChatRequest(String userId, String sessionId, String message) {
 
     }
 

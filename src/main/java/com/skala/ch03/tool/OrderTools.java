@@ -44,17 +44,20 @@ public class OrderTools {
 
     @Tool(description = """
             환불을 접수한다.
-            즉시 환불 처리하지 않고 담당자 승인 후 처리한다.
-            사용자가 특정 주문의 환불을 요청하면 이 도구를 사용한다.
+            사용자가 '환불해줘', '환불로 접수해줘', '반품 접수해줘'처럼
+            이미 대화 중인 주문의 환불 또는 반품 접수를 요청하면 이 도구를 사용한다.
+            이전 대화에서 주문번호와 환불 사유를 알 수 있으면 그 정보를 사용한다.
+            즉시 환불 처리하지 않고 PENDING 상태로 접수하며 담당자 승인 후 처리한다.
            """)
-    public TicketView reqeustRefund(@ToolParam(description = "환불할 주민번호. 예: 12345") String orderId,
-                                    @ToolParam(description = "환불 사유") String reason,
+    public TicketView reqeustRefund(@ToolParam(description = "환불할 주민번호. 이전 대화의 주문번호를 사용할 수 있음.  예: 12345") String orderId,
+                                    @ToolParam(description = "환불 사유. 예: 단순 변심") String reason,
                                     ToolContext context) {
 
         String userId = (String) context.getContext().get("userId");
         orders.findByIdAndOwnerId(orderId, userId).orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
         Ticket ticket = tickets.create(orderId, userId, reason);
 
+        System.out.println("[TOOL] requestRefund() 호출");
         System.out.println("[REFUND_REQEUESTED] user = " + userId + ", orderId = " + orderId + ", ticket = " + ticket.no());
 
         orders.findByIdAndOwnerId(orderId, userId).orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
